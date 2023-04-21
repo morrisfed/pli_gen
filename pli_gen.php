@@ -16,18 +16,35 @@ if ( is_admin() ) {
 
 define( 'PLI_OPTION_NAME', 'pligen' );
 
+
+// function show_loggedin_function( $atts ) {
+//
+//     // Rumburg
+//     //$gotUser = get_user_by("login", "5b053bd3afd691796be93226");
+//     // Downes
+//     $gotUser = get_user_by("login", "5b053bd5afd691796be933d0");
+//     pli_log($gotUser);
+//
+// 	add_filter('widget_text', 'do_shortcode');
+// 	if ($gotUser) 
+// 		return 'Welcome ' . $gotUser->display_name . '!';
+// 	else
+// 		return '<a href="' . wp_login_url() . ' ">Login</a>';
+//	
+// }
+// add_shortcode( 'show_loggedin_as', 'show_loggedin_function' );
+
+
 function pli_activate() {
     pli_log("pli_activate called");
-    $cache_folder = ABSPATH."/wp-content/pli_gen";
-    if (!file_exists($cache_folder)) {
-        mkdir($cache_folder, 0644);
-    }
     $options = get_option(PLI_OPTION_NAME);
     if ( !$options ) $options = array();
     $update_options = array(
         'template' => array_key_exists('template', $options) ? $options['template'] : '',
         'offset' => array_key_exists('offset', $options) ? $options['offset'] : '350',
-        'fontsize' => array_key_exists('fontsize', $options) ? $options['fontsize'] : '17'
+        'fontsize' => array_key_exists('fontsize', $options) ? $options['fontsize'] : '17',
+        'executable' => array_key_exists('executable', $options) ? $options['executable'] : '',
+        'cache' => array_key_exists('cache', $options) ? $options['cache'] : ''
     );
     update_option(PLI_OPTION_NAME, $update_options );
 }
@@ -39,15 +56,26 @@ function pli_initialise_shortcode() {
 
 function pli_shortcode_handler() {
     pli_log("pli_shortcode_handler called");
+
     $options = get_option(PLI_OPTION_NAME);
     $template = $options['template'];
     $offset = $options['offset'];
     $fontsize = $options['fontsize'];
+    $executable = $options['executable'];
+    $cache = $options['cache'];
 
-    if (empty($template)) {
+    if (empty(ABSPATH.$template) || empty(ABSPATH.$executable) || empty(ABSPATH.$cache)) {
         return '<p>PLI certificates are not currently available</p>';
     }
+
+    if (!file_exists(ABSPATH.$cache)) {
+        mkdir(ABSPATH.$cache, 0777);
+    }
+
     $current_user = wp_get_current_user();
+    pli_log($current_user);
+    pli_log('is_user_logged_in: ' . is_user_logged_in());
+
     $team_name = $current_user->display_name;
 
     pli_log("Team name = ".$team_name);
@@ -62,7 +90,7 @@ function pli_shortcode_handler() {
         } else {
             $temp = $line.' '.$word;
         }
-        if (count($temp) > (40 * $returns)) {
+        if (strlen($temp) > (40 * $returns)) {
             $temp = $line."\n".$word;
             $returns++;
         }
@@ -73,7 +101,7 @@ function pli_shortcode_handler() {
 
     $pdf_file_name = 'pli_'.$current_user->user_login.'.pdf';
     $thumbnail_file_name = $pdf_file_name.'.jpg';
-    $pdf_file_path = ABSPATH.'wp-content/pli_gen/'.$pdf_file_name;
+    $pdf_file_path = ABSPATH.$cache.'/'.$pdf_file_name;
     pli_log($pdf_file_path);
     $thumbnail_file_path = $pdf_file_path . '.jpg';
     $name_file_path = $pdf_file_path.'name.txt';
@@ -91,8 +119,7 @@ function pli_shortcode_handler() {
     }
 
     if (!$name_matches || !file_exists($pdf_file_path)) {
-        $cpdf = ABSPATH.'scripts/cpdf';
-        $command=$cpdf.' -add-text "'.$line.'" -top '.$offset.' -justify-center -midline -font "Helvetica" -font-size '.$fontsize.' '.ABSPATH.$template.' -o '.$pdf_file_path;
+        $command=ABSPATH.$executable.' -add-text "'.$line.'" -top '.$offset.' -justify-center -midline -font "Helvetica" -font-size '.$fontsize.' '.ABSPATH.$template.' -o '.$pdf_file_path;
         pli_log($command);
         shell_exec($command);
     }
@@ -107,7 +134,7 @@ function pli_shortcode_handler() {
 
     $url = get_site_url();
 
-    return '<a href="'.$url.'/wp-content/pli_gen/'.$pdf_file_name.'"><img class="alignnone size-medium thumb-of-pdf" src="'.$url.'/wp-content/pli_gen/'.$thumbnail_file_name.'" alt="thumbnail of pli" width="212" height="300" /></a>';
+    return '<a href="'.$url.$cache.$pdf_file_name.'"><img class="alignnone size-medium thumb-of-pdf" src="'.$url.$cache.$thumbnail_file_name.'" alt="thumbnail of pli" width="212" height="300" /></a>';
 }
 
 function pli_register_settings_page() {
@@ -117,39 +144,69 @@ function pli_register_settings_page() {
 function pli_options_page() {
     pli_log('pli_options_page called');
     if ( isset( $_POST[ 'pli_gen_options_nonce' ] ) && wp_verify_nonce( $_POST[ 'pli_gen_options_nonce' ], basename( __FILE__ ) ) ) {
+        pli_log('updating options');
         $update_options = array(
             'template' => isset($_POST['pli_gen_template']) ? $_POST[ 'pli_gen_template' ] : '',
-            'offset' => isset($_POST['offset']) ? $_POST['offset'] : '350',
-            'fontsize' => isset($_POST['fontsize']) ? $_POST['fontsize'] : '17'
+            'offset' => isset($_POST['pli_gen_offset']) ? $_POST['pli_gen_offset'] : '350',
+            'fontsize' => isset($_POST['pli_gen_fontsize']) ? $_POST['pli_gen_fontsize'] : '17',
+            'executable' => isset($_POST['pli_gen_executable']) ? $_POST['pli_gen_executable'] : '',
+            'cache' => isset($_POST['pli_gen_cache']) ? $_POST['pli_gen_cache'] : ''
         );
         update_option(PLI_OPTION_NAME, $update_options );
         echo '<div class="updated fade"><p><strong>Options saved</strong></p></div>';
     }
-
-    $options = get_option(PLI_OPTION_NAME);
-
-    echo
-        '<div>'."\n".
-        '<h2>PLI Certificate Generation</h2>'."\n".
-        '<form method="post" action="">'."\n".
-        '<table>'."\n".
-        '<tr valign="top">'."\n".
-        '<th scope="row"><label for="pli_gen_template">Template Path</label></th>'."\n".
-        '<td><input type="text" id="pli_gen_template" name="pli_gen_template" value="'.($options['template']).'"/></td>'."\n".
-        '</tr>'."\n".
-        '<tr valign="top">'."\n".
-        '<th scope="row"><label for="pli_gen_offset">Offset into PDF for team name</label></th>'."\n".
-        '<td><input type="text" id="pli_gen_offset" name="pli_gen_offset" value="'.($options['offset']).'"/></td>'."\n".
-        '</tr>'."\n".
-        '<tr valign="top">'."\n".
-        '<th scope="row"><label for="pli_gen_fontsize">Font size for team name</label></th>'."\n".
-        '<td><input type="text" id="pli_gen_fontsize" name="pli_gen_fontsize" value="'.($options['fontsize']).'"/></td>'."\n".
-        '</tr>'."\n".
-        '</table>'."\n".
-        '<p class="submit"><input type="submit" name="Submit" class="button-primary" value="Save changes"/></p>'."\n".
-        '<input type="hidden" name="pli_gen_options_nonce" value="'.wp_create_nonce( basename( __FILE__ ) ).'" />'."\n".
-        '</form>'."\n".
-        '</div>'."\n";
+    if (isset($_GET['clear_cache'])) {
+        pli_log('clearing cache');
+        $options = get_option(PLI_OPTION_NAME);
+        if (empty(ABSPATH.$options['cache'])) {
+            echo '<h2>PLI Certicate Cache</h2>'."\n".
+            '<p>Cache could not be cleared because the cache option is not configured</p>';
+        } else {
+            $files = glob(ABSPATH.$options['cache'].'/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    pli_log('Deleting '.$file);
+                    unlink($file);
+                }
+            }
+            echo '<h2>PLI Certicate Cache Cleared</h2>'."\n";
+        }
+        echo '<p><a href="'.remove_query_arg( 'clear_cache', $_SERVER[ 'REQUEST_URI' ] ).'" class="button button-primary">Back to PLI Certicate Generator options</a></p><br/>'."\n";
+    } else {
+        $options = get_option(PLI_OPTION_NAME);
+        echo
+            '<div>'."\n".
+            '<h2>PLI Certificate Generation Options</h2>'."\n".
+            '<form method="post" action="">'."\n".
+            '<table>'."\n".
+            '<tr valign="top">'."\n".
+            '<th scope="row"><label for="pli_gen_template">Template Path</label></th>'."\n".
+            '<td><input type="text" id="pli_gen_template" name="pli_gen_template" value="'.($options['template']).'"/></td>'."\n".
+            '</tr>'."\n".
+            '<tr valign="top">'."\n".
+            '<th scope="row"><label for="pli_gen_offset">Offset into PDF for team name</label></th>'."\n".
+            '<td><input type="text" id="pli_gen_offset" name="pli_gen_offset" value="'.($options['offset']).'"/></td>'."\n".
+            '</tr>'."\n".
+            '<tr valign="top">'."\n".
+            '<th scope="row"><label for="pli_gen_fontsize">Font size for team name</label></th>'."\n".
+            '<td><input type="text" id="pli_gen_fontsize" name="pli_gen_fontsize" value="'.($options['fontsize']).'"/></td>'."\n".
+            '</tr>'."\n".
+            '<tr valign="top">'."\n".
+            '<th scope="row"><label for="pli_gen_executable">Executable path</label></th>'."\n".
+            '<td><input type="text" id="pli_gen_executable" name="pli_gen_executable" value="'.($options['executable']).'"/></td>'."\n".
+            '</tr>'."\n".
+            '<tr valign="top">'."\n".
+            '<th scope="row"><label for="pli_gen_cache">Cache path</label></th>'."\n".
+            '<td><input type="text" id="pli_gen_cache" name="pli_gen_cache" value="'.($options['cache']).'"/></td>'."\n".
+            '</tr>'."\n".
+            '</table>'."\n".
+            '<p class="submit"><input type="submit" name="Submit" class="button-primary" value="Save changes"/></p>'."\n".
+            '<input type="hidden" name="pli_gen_options_nonce" value="'.wp_create_nonce( basename( __FILE__ ) ).'" />'."\n".
+            '</form>'."\n".
+            '</div>'."\n".
+            '<h2>PLI Certificate Cache</h2>'."\n".
+            '<p><a href="'.add_query_arg( 'clear_cache', 'all', $_SERVER[ 'REQUEST_URI' ] ).'" class="button button-primary">' .__( 'Clear Cache', 'pli-gen' ). '</a></p>'."\n";
+    }
 }
 
 function pli_uninstall() {
