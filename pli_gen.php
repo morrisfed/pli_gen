@@ -16,23 +16,6 @@ if (is_admin()) {
 
 define("PLI_OPTION_NAME", "pligen");
 
-// function show_loggedin_function( $atts ) {
-//
-//     // Rumburg
-//     //$gotUser = get_user_by("login", "5b053bd3afd691796be93226");
-//     // Downes
-//     $gotUser = get_user_by("login", "5b053bd5afd691796be933d0");
-//     pli_log($gotUser);
-//
-// 	add_filter('widget_text', 'do_shortcode');
-// 	if ($gotUser)
-// 		return 'Welcome ' . $gotUser->display_name . '!';
-// 	else
-// 		return '<a href="' . wp_login_url() . ' ">Login</a>';
-//
-// }
-// add_shortcode( 'show_loggedin_as', 'show_loggedin_function' );
-
 function pli_activate()
 {
     pli_log("pli_activate called");
