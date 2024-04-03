@@ -91,7 +91,7 @@ function pli_shortcode_handler()
     pli_log($current_user);
     pli_log("is_user_logged_in: " . is_user_logged_in());
 
-    $team_name = $current_user->display_name;
+    $team_name = wp_specialchars_decode($current_user->display_name);
 
     pli_log("Team name = " . $team_name);
 
