@@ -18,7 +18,6 @@ define("PLI_OPTION_NAME", "pligen");
 
 function pli_activate()
 {
-    pli_log("pli_activate called");
     $options = get_option(PLI_OPTION_NAME);
     if (!$options) {
         $options = [];
@@ -43,14 +42,11 @@ function pli_activate()
 
 function pli_initialise_shortcode()
 {
-    pli_log("pli_initialise_shortcode called");
     add_shortcode("pligen", "pli_shortcode_handler");
 }
 
 function pli_shortcode_handler()
 {
-    pli_log("pli_shortcode_handler called");
-
     $options = get_option(PLI_OPTION_NAME);
     $template = $options["template"];
     $offset = $options["offset"];
