@@ -1,0 +1,13 @@
+{
+  "name": "pli_gen",
+  "version": "0.2.0",
+  "description": "WordPress plugin for generation of Morris Federation public liability insurance certificates",
+  "scripts": {
+    "prettier": "prettier"
+  },
+  "author": "The Morris Federation",
+  "devDependencies": {
+    "@prettier/plugin-php": "^0.22.2",
+    "prettier": "^3.2.5"
+  }
+}
